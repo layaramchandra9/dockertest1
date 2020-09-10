@@ -1,0 +1,43 @@
+pipeline {
+environment {
+registry = "layaramchandra/myfirstdockerimage"
+registryCredential = 'dockerhubcreds'
+dockerImage = ''
+}
+agent any
+stages {
+stage('Cloning our Git') {
+steps {
+git 'https://github.com/layaramchandra9/dockertest1.git'
+}
+}
+stage('Building our image') {
+steps{
+script {
+dockerImage = docker.build registry + ":v$BUILD_NUMBER"
+}
+}
+}
+stage('Push Image To DockerHUB') {
+steps{
+script {
+docker.withRegistry( '', registryCredential ) {
+dockerImage.push()
+}
+}
+}
+}
+stage('Cleaning up') {
+steps{
+sh "docker rmi $registry:v$BUILD_NUMBER"
+}
+}
+stage('Deploying to Docker Swarm') {
+steps{
+sh "docker -H tcp://192.168.1.230:2375 service rm testing1 || true"
+sh "docker -H tcp://192.168.1.230:2375 service create --name testing1 -p 8100:80 $registry:v$BUILD_NUMBER"
+}
+}
+}
+}
+
